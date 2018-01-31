@@ -166,7 +166,7 @@ def outformxls():
     Kp = etree.Element('Kp')
     to_xml(list,Kp)
     tree = etree.ElementTree(Kp)
-    tree.write('tax_code.xml', pretty_print=True, xml_declaration=True, encoding='GBK')
+    tree.write('out%s.xml'%time.strftime('%Y%m%d',time.localtime(time.time())), pretty_print=True, xml_declaration=True, encoding='GBK')
 
 if __name__ == "__main__":
     conf = Config()
