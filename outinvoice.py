@@ -59,7 +59,6 @@ def to_xml(list,Kp):
 def exchange_rate(currency,date):
     currency = currency.split(' ')[1]
     month = date.replace('-','')[:6]
-    print currency,month
     base_data = xlrd.open_workbook('base.xls')
     table3 = base_data.sheet_by_name(u'汇率')
     # 取得行数
