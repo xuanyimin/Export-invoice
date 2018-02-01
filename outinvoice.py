@@ -39,7 +39,7 @@ def to_xml(list,Kp):
             Hsbz = etree.SubElement(Fp, 'Hsbz')#含税标志
             Hsbz.text = u'0'
             Gfmc = etree.SubElement(Fp, 'Gfmc')#购方名称
-            Gfmc.text = u'1'
+            Gfmc.text = in_xls_data.get(u'客户')
             Gfsh = etree.SubElement(Fp, 'Gfsh')#购方税号
             Gfsh.text = u''
             Gfdzdh = etree.SubElement(Fp, 'Gfdzdh')  # 购方地址电话
@@ -171,3 +171,4 @@ if __name__ == "__main__":
     conf = Config()
     logger = conf.getLog()
     outformxls()
+    time.sleep(60)
