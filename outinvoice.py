@@ -123,7 +123,7 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
     Jldw.text = in_xls_data.get(u'计量单位')
     if in_xls_data.get(u'成交方式'):
         cjfs = u'%s' % in_xls_data.get(u'成交方式')
-    if in_xls_data.get(u'保费金额'):
+    if in_xls_data.get(u'保费金额')> 0:
         cjfs = cjfs + u'；保费：%s' % in_xls_data.get(u'保费金额')
     if in_xls_data.get(u'运费金额') > 0:
         cjfs = cjfs + u'；保费：%s' % in_xls_data.get(u'运费金额')
