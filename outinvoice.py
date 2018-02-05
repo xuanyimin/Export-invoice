@@ -33,7 +33,7 @@ def to_xml(list,Kp):
             Fpsj = etree.SubElement(Fpxx, 'Fpsj')
             Fp = etree.SubElement(Fpsj, 'Fp')
             Djh = etree.SubElement(Fp, 'Djh')#单据号
-            Djh.text = u'%s%s'%(date,i)
+            Djh.text = u'%s'%(in_xls_data.get(u'海关报关单号'))
             Spbmbbh = etree.SubElement(Fp, 'Spbmbbh')#商品编码版本号
             Spbmbbh.text = u'19.0'
             Hsbz = etree.SubElement(Fp, 'Hsbz')#含税标志
