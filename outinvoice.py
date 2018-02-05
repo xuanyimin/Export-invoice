@@ -11,7 +11,7 @@ sys.setdefaultencoding('utf-8')
 def to_xml(list,Kp):
     #处理XML头
     Version = etree.SubElement(Kp, 'Version')
-    Version.text = '2.0'
+    Version.text = '3.0'
     Fpxx = etree.SubElement(Kp, 'Fpxx')
     #处理xml发票张数
     Zsl = etree.SubElement(Fpxx, 'Zsl')#单据数量
@@ -24,7 +24,7 @@ def to_xml(list,Kp):
         invoice = in_xls_data.get(u'海关报关单号')
         date = time.strftime('%Y%m%d%H%M%S',time.localtime(time.time()))
         if invoice in invoices:
-            mixi(in_xls_data,Fp,Bz,out_amount,bf,yf,zf)
+            mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf)
         else:
             out_amount = bf = yf = zf = 0
             i += 1
@@ -35,13 +35,15 @@ def to_xml(list,Kp):
             Djh = etree.SubElement(Fp, 'Djh')#单据号
             Djh.text = u'%s%s'%(date,i)
             Spbmbbh = etree.SubElement(Fp, 'Spbmbbh')#商品编码版本号
-            Spbmbbh.text = u'16.0'
+            Spbmbbh.text = u'19.0'
             Hsbz = etree.SubElement(Fp, 'Hsbz')#含税标志
+            Hsbz.text = u'0'
+            Sgbz = etree.SubElement(Fp, 'Sgbz')  # 含税标志
             Hsbz.text = u'0'
             Gfmc = etree.SubElement(Fp, 'Gfmc')#购方名称
             Gfmc.text = in_xls_data.get(u'客户')
             Gfsh = etree.SubElement(Fp, 'Gfsh')#购方税号
-            Gfsh.text = u''
+            Gfsh.text = u'9133052100000000000'
             Gfdzdh = etree.SubElement(Fp, 'Gfdzdh')  # 购方地址电话
             Gfdzdh.text = u''
             Gfyhzh = etree.SubElement(Fp, 'Gfyhzh')  # 购方银行帐号
@@ -51,8 +53,9 @@ def to_xml(list,Kp):
             Fhr = etree.SubElement(Fp, 'Fhr')#复核人
             Fhr.text = u'昊添财务'
             Bz = etree.SubElement(Fp, 'Bz')  # 复核人
+            Spxx = etree.SubElement(Fp, 'Spxx')
             # 发票明细行
-            mixi(in_xls_data,Fp,Bz,out_amount,bf,yf,zf)
+            mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf)
 
     Zsl.text = str(i)
 
@@ -73,7 +76,7 @@ def exchange_rate(currency,date):
             if str(int(app.get(u'月份'))) == month:
                 return app.get(currency)
 
-def mixi(in_xls_data,Fp,Bz,out_amount,bf,yf,zf):
+def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
     # 明细计算内容,
     out_amount += float(in_xls_data.get(u'成交金额'))  # 成交外币
     currency = in_xls_data.get(u'币种')
@@ -85,7 +88,6 @@ def mixi(in_xls_data,Fp,Bz,out_amount,bf,yf,zf):
     bf += float(in_xls_data.get(u'保费金额'))  # 保费
     yf += float(in_xls_data.get(u'运费金额'))  # 运费
     zf += float(in_xls_data.get(u'杂费金额'))  # 杂费
-    Spxx = etree.SubElement(Fp, 'Spxx')
     Sph = etree.SubElement(Spxx, 'Sph')
     Kce = etree.SubElement(Sph, 'Kce')  # 扣除额
     Kce.text = u''
@@ -119,11 +121,13 @@ def mixi(in_xls_data,Fp,Bz,out_amount,bf,yf,zf):
     Qyspbm.text = u''
     Jldw = etree.SubElement(Sph, 'Jldw')  # 计量单位
     Jldw.text = in_xls_data.get(u'计量单位')
-    if in_xls_data.get(u'成交方式') == 'FOB':
-        cjfs = 'FOB'
-    if in_xls_data.get(u'成交方式') == 'CNF':
-        cjfs = u'CNF；运费：%s' % yf
-    # todo 更多成交方式u
+    if in_xls_data.get(u'成交方式'):
+        cjfs = u'%s' % in_xls_data.get(u'成交方式')
+    if in_xls_data.get(u'保费金额'):
+        cjfs = cjfs + u'；保费：%s' % in_xls_data.get(u'保费金额')
+    if in_xls_data.get(u'运费金额') > 0:
+        cjfs = cjfs + u'；保费：%s' % in_xls_data.get(u'运费金额')
+
     Bz.text = u'出口业务；出口销售总额:%s；币种:%s；成交方式:%s；合同号:%s；运单号:%s；目的港:%s；' % (
         out_amount, in_xls_data.get(u'币种'), cjfs, in_xls_data.get(u'进出口合同号') or '',in_xls_data.get(u'运输工具'),u'现在数据里找不到等已后再加')
 
@@ -140,7 +144,7 @@ def base_date(data,number):
             app = []
             for i in range(len(colnames2)):
                 app.append(str(row[i]))
-            if app[0] == data:
+            if app[0] == str(int(data)):
                 return app[number]
 
 def outformxls():
@@ -171,4 +175,4 @@ if __name__ == "__main__":
     conf = Config()
     logger = conf.getLog()
     outformxls()
-    time.sleep(60)
+    time.sleep(10)

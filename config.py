@@ -8,7 +8,7 @@ class Config():
     logger.setLevel(logging.DEBUG)
 
     # 创建一个handler，用于写入日志文件
-    fh = logging.FileHandler('out%s.log'%time.strftime('%Y%m%d%H%M%S',time.localtime(time.time())))
+    fh = logging.FileHandler('out%s.log'%time.strftime('%Y%m%d',time.localtime(time.time())))
     fh.setLevel(logging.DEBUG)
 
     # 再创建一个handler，用于输出到控制台
