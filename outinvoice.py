@@ -121,15 +121,22 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
     Qyspbm.text = u''
     Jldw = etree.SubElement(Sph, 'Jldw')  # 计量单位
     Jldw.text = in_xls_data.get(u'计量单位')
+    bz = u'出口业务；出口销售总额:%s；'%out_amount
+    if in_xls_data.get(u'币种'):
+        bz = bz + u'币种：%s；' % in_xls_data.get(u'币种')
     if in_xls_data.get(u'成交方式'):
-        cjfs = u'%s' % in_xls_data.get(u'成交方式')
+        bz = u'成交方式：%s；' % in_xls_data.get(u'成交方式')
     if in_xls_data.get(u'保费金额')> 0:
-        cjfs = cjfs + u'；保费：%s' % in_xls_data.get(u'保费金额')
+        bz = bz + u'保费：%s；' % in_xls_data.get(u'保费金额')
     if in_xls_data.get(u'运费金额') > 0:
-        cjfs = cjfs + u'；保费：%s' % in_xls_data.get(u'运费金额')
-
-    Bz.text = u'出口业务；出口销售总额:%s；币种:%s；成交方式:%s；合同号:%s；运单号:%s；目的港:%s；' % (
-        out_amount, in_xls_data.get(u'币种'), cjfs, in_xls_data.get(u'进出口合同号') or '',in_xls_data.get(u'运输工具'),u'现在数据里找不到等已后再加')
+        bz = bz + u'保费：%s；' % in_xls_data.get(u'运费金额')
+    if in_xls_data.get(u'进出口合同号'):
+        bz = bz + u'进出口合同号：%s；' % in_xls_data.get(u'进出口合同号')
+    if in_xls_data.get(u'加工贸易手册号'):
+        bz = bz + u'加工贸易手册号：%s；' % in_xls_data.get(u'加工贸易手册号')
+    if in_xls_data.get(u'运输工具'):
+        bz = bz + u'运单号：%s；' % in_xls_data.get(u'运输工具')
+    Bz.text = bz
 
 def base_date(data,number):
     # 从薄名中取出基础数据
