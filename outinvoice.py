@@ -43,7 +43,7 @@ def to_xml(list,Kp):
             Gfmc = etree.SubElement(Fp, 'Gfmc')#购方名称
             Gfmc.text = in_xls_data.get(u'客户')
             Gfsh = etree.SubElement(Fp, 'Gfsh')#购方税号
-            Gfsh.text = u'9133052100000000000'
+            Gfsh.text = u'0000000000000000000'
             Gfdzdh = etree.SubElement(Fp, 'Gfdzdh')  # 购方地址电话
             Gfdzdh.text = u''
             Gfyhzh = etree.SubElement(Fp, 'Gfyhzh')  # 购方银行帐号
@@ -102,7 +102,7 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
     Spmc = etree.SubElement(Sph, 'Spmc')  # 商品名称
     Spmc.text = in_xls_data.get(u'商品名称')
     Ggxh = etree.SubElement(Sph, 'Ggxh')  # 规格型号
-    Ggxh.text = u''
+    Ggxh.text = in_xls_data.get(u'规格型号') or ''
     Slv = etree.SubElement(Sph, 'Slv')  # 税率
     Slv.text = u'0'
     Xh = etree.SubElement(Sph, 'Xh')  # 序号
@@ -125,17 +125,21 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
     if in_xls_data.get(u'币种'):
         bz = bz + u'币种：%s；' % in_xls_data.get(u'币种')
     if in_xls_data.get(u'成交方式'):
-        bz = u'成交方式：%s；' % in_xls_data.get(u'成交方式')
+        bz = bz + u'成交方式：%s；' % in_xls_data.get(u'成交方式')
     if in_xls_data.get(u'保费金额')> 0:
         bz = bz + u'保费：%s；' % in_xls_data.get(u'保费金额')
     if in_xls_data.get(u'运费金额') > 0:
-        bz = bz + u'保费：%s；' % in_xls_data.get(u'运费金额')
+        bz = bz + u'运费：%s；' % in_xls_data.get(u'运费金额')
     if in_xls_data.get(u'进出口合同号'):
         bz = bz + u'进出口合同号：%s；' % in_xls_data.get(u'进出口合同号')
     if in_xls_data.get(u'加工贸易手册号'):
         bz = bz + u'加工贸易手册号：%s；' % in_xls_data.get(u'加工贸易手册号')
     if in_xls_data.get(u'运输工具'):
-        bz = bz + u'运单号：%s；' % in_xls_data.get(u'运输工具')
+        bz = bz + u'运输工具：%s；' % in_xls_data.get(u'运输工具')
+    if in_xls_data.get(u'装船口岸'):
+        bz = bz + u'装船口岸：%s；' % in_xls_data.get(u'装船口岸')
+    if in_xls_data.get(u'目的地'):
+        bz = bz + u'目的地：%s；' % in_xls_data.get(u'目的地')
     Bz.text = bz
 
 def base_date(data,number):
