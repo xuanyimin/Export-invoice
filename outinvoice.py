@@ -43,7 +43,7 @@ def to_xml(list,Kp):
             Gfmc = etree.SubElement(Fp, 'Gfmc')#购方名称
             Gfmc.text = in_xls_data.get(u'客户')
             Gfsh = etree.SubElement(Fp, 'Gfsh')#购方税号
-            Gfsh.text = u'0000000000000000000'
+            Gfsh.text = u''
             Gfdzdh = etree.SubElement(Fp, 'Gfdzdh')  # 购方地址电话
             Gfdzdh.text = u''
             Gfyhzh = etree.SubElement(Fp, 'Gfyhzh')  # 购方银行帐号
@@ -123,7 +123,7 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
     Jldw.text = in_xls_data.get(u'计量单位')
     bz = u'出口业务；出口销售总额:%s；'%out_amount
     if in_xls_data.get(u'币种'):
-        bz = bz + u'币种：%s；' % in_xls_data.get(u'币种')
+        bz = bz + u'币种：%s；' % in_xls_data.get(u'币种').split(' ')[1]
     if in_xls_data.get(u'成交方式'):
         bz = bz + u'成交方式：%s；' % in_xls_data.get(u'成交方式')
     if in_xls_data.get(u'保费金额')> 0:
@@ -134,10 +134,12 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
         bz = bz + u'进出口合同号：%s；' % in_xls_data.get(u'进出口合同号')
     if in_xls_data.get(u'加工贸易手册号'):
         bz = bz + u'加工贸易手册号：%s；' % in_xls_data.get(u'加工贸易手册号')
-    if in_xls_data.get(u'运输工具'):
-        bz = bz + u'运输工具：%s；' % in_xls_data.get(u'运输工具')
+    #if in_xls_data.get(u'运输工具'):
+        #bz = bz + u'运输工具：%s；' % in_xls_data.get(u'运输工具')
     if in_xls_data.get(u'装船口岸'):
         bz = bz + u'装船口岸：%s；' % in_xls_data.get(u'装船口岸')
+    if in_xls_data.get(u'出口口岸'):
+        bz = bz + u'出口口岸：%s；' % in_xls_data.get(u'出口口岸')
     if in_xls_data.get(u'目的地'):
         bz = bz + u'目的地：%s；' % in_xls_data.get(u'目的地')
     Bz.text = bz
@@ -158,7 +160,22 @@ def base_date(data,number):
             if app[0] == str(int(data)):
                 return app[number]
 
-def outformxls():
+def company_date(data):
+    # 从薄名中取出基础数据
+    base_data = xlrd.open_workbook('base.xls')
+    table = base_data.sheet_by_name(u'公司信息')
+    nrows = table.nrows
+    colnames = table.row_values(0)
+    for rownum in range(0, nrows):
+        row = table.row_values(rownum)
+        if row:
+            app = []
+            for i in range(len(colnames)):
+                app.append(str(row[i]))
+            if app[0] == data:
+                return app[1]
+
+def outformxls(select):
     #处理EXCEL
     xls_data = xlrd.open_workbook('10137.xls')
     table = xls_data.sheets()[0]
@@ -177,13 +194,157 @@ def outformxls():
             newcows += 1
 
     # 写XML
-    Kp = etree.Element('Kp')
-    to_xml(list,Kp)
-    tree = etree.ElementTree(Kp)
-    tree.write('out%s.xml'%time.strftime('%Y%m%d',time.localtime(time.time())), pretty_print=True, xml_declaration=True, encoding='GBK')
+    if select == '1':
+        Kp = etree.Element('Kp')
+        to_xml(list,Kp)
+        tree = etree.ElementTree(Kp)
+        tree.write('out%s.xml'%time.strftime('%Y%m%d',time.localtime(time.time())), pretty_print=True, xml_declaration=True, encoding='GBK')
+    else :
+        business = etree.Element("business",  comment=u"发票开具", id="FPKJ")
+        REQUEST_COMMON_FPKJ = etree.SubElement(business, 'REQUEST_COMMON_FPKJ')
+        REQUEST_COMMON_FPKJ.set("class", "REQUEST_COMMON_FPKJ")
+        to_dzxml(list, REQUEST_COMMON_FPKJ)
+        tree = etree.ElementTree(business)
+        tree.write('out%s.xml' % time.strftime('%Y%m%d', time.localtime(time.time())), pretty_print=True,
+                   xml_declaration=True, encoding='GBK')
+
+def to_dzxml(list,REQUEST_COMMON_FPKJ):
+    line = len(list)
+    invoices =[]
+    i = 0
+    out_amount = amount = 0
+    for data in range(0, line):
+        in_xls_data = list[data]
+        invoice = in_xls_data.get(u'海关报关单号')
+        if invoice in invoices:
+            (out_amount2, amount2) = dzmixi(in_xls_data, COMMON_FPKJ_XMXXS)
+            out_amount += out_amount2
+            amount += amount2
+        else:
+            i += 1
+            invoices.append(invoice)
+            # 发票头
+            COMMON_FPKJ_FPT = etree.SubElement(REQUEST_COMMON_FPKJ, 'COMMON_FPKJ_FPT')
+            COMMON_FPKJ_FPT.set("class", "COMMON_FPKJ_FPT")
+            FPQQLSH = etree.SubElement(COMMON_FPKJ_FPT, 'FPQQLSH')  # 开票请求流水号
+            FPQQLSH.text = u'%s'%(in_xls_data.get(u'海关报关单号'))
+            KPLX = etree.SubElement(COMMON_FPKJ_FPT, 'KPLX')#开票类型 0为蓝字，1为红字
+            KPLX.text = u'0'
+            XSF_NSRSBH = etree.SubElement(COMMON_FPKJ_FPT, 'XSF_NSRSBH')#销售方纳税人识别号
+            XSF_NSRSBH.text = company_date(u'公司税号：')
+            XSF_MC = etree.SubElement(COMMON_FPKJ_FPT, 'XSF_MC')  # 销售方名称
+            XSF_MC.text = company_date(u'公司名称：')
+            XSF_DZDH = etree.SubElement(COMMON_FPKJ_FPT, 'XSF_DZDH')#销售方地址、电话
+            XSF_DZDH.text = company_date(u'公司地址、电话：')
+            XSF_YHZH = etree.SubElement(COMMON_FPKJ_FPT, 'XSF_YHZH')#销售方银行帐号
+            XSF_YHZH.text = company_date(u'开户行及帐号：')
+            GMF_NSRSBH = etree.SubElement(COMMON_FPKJ_FPT, 'GMF_NSRSBH')  # 购买主纳税人识别号
+            GMF_NSRSBH.text = u''
+            GMF_MC = etree.SubElement(COMMON_FPKJ_FPT, 'GMF_MC')  # 购方名称
+            GMF_MC.text = in_xls_data.get(u'客户')
+            GMF_DZDH = etree.SubElement(COMMON_FPKJ_FPT, 'GMF_DZDH')#购方地址、电话
+            GMF_DZDH.text = u''
+            GMF_YHZH = etree.SubElement(COMMON_FPKJ_FPT, 'GMF_YHZH')#购方银行帐号
+            GMF_YHZH.text = u''
+            KPR = etree.SubElement(COMMON_FPKJ_FPT, 'KPR')  # 开票人
+            KPR.text = u''
+            SKR = etree.SubElement(COMMON_FPKJ_FPT, 'SKR')  # 收款人
+            SKR.text = u''
+            FHR = etree.SubElement(COMMON_FPKJ_FPT, 'FHR')  # 复核人
+            FHR.text = u'昊添财务'
+            YFP_DM = etree.SubElement(COMMON_FPKJ_FPT, 'YFP_DM')  # 原发票代码，红字必须
+            YFP_DM.text = u''
+            YFP_HM = etree.SubElement(COMMON_FPKJ_FPT, 'YFP_HM')  # 原发票号码，红字必须
+            YFP_HM.text = u''
+            BZ = etree.SubElement(COMMON_FPKJ_FPT, 'BZ')  # 备注
+            BMB_BBH = etree.SubElement(COMMON_FPKJ_FPT, 'BMB_BBH')  # 版本号
+            BMB_BBH.text = u'18.0'
+            JSHJ = etree.SubElement(COMMON_FPKJ_FPT, 'JSHJ')  # 价税合计
+            HJJE = etree.SubElement(COMMON_FPKJ_FPT, 'HJJE')  # 合计金额（不含税）
+            HJSE = etree.SubElement(COMMON_FPKJ_FPT, 'HJSE')  # 合计税额
+            HJSE.text = u'0.00'
+            COMMON_FPKJ_XMXXS= etree.SubElement(REQUEST_COMMON_FPKJ, 'COMMON_FPKJ_XMXXS')
+            COMMON_FPKJ_XMXXS.set("class", "COMMON_FPKJ_XMXX")
+            COMMON_FPKJ_XMXXS.set("size", "1")
+            # 发票明细行
+            (out_amount,amount) = dzmixi(in_xls_data,COMMON_FPKJ_XMXXS)
+        bz = u'出口业务；出口销售总额:%s；' % out_amount
+        if in_xls_data.get(u'币种'):
+            bz = bz + u'币种：%s；' % in_xls_data.get(u'币种').split(' ')[1]
+        if in_xls_data.get(u'成交方式'):
+            bz = bz + u'成交方式：%s；' % in_xls_data.get(u'成交方式')
+        if in_xls_data.get(u'保费金额') > 0:
+            bz = bz + u'保费：%s；' % in_xls_data.get(u'保费金额')
+        if in_xls_data.get(u'运费金额') > 0:
+            bz = bz + u'运费：%s；' % in_xls_data.get(u'运费金额')
+        if in_xls_data.get(u'进出口合同号'):
+            bz = bz + u'进出口合同号：%s；' % in_xls_data.get(u'进出口合同号')
+        if in_xls_data.get(u'加工贸易手册号'):
+            bz = bz + u'加工贸易手册号：%s；' % in_xls_data.get(u'加工贸易手册号')
+        if in_xls_data.get(u'装船口岸'):
+            bz = bz + u'装船口岸：%s；' % in_xls_data.get(u'装船口岸')
+        if in_xls_data.get(u'出口口岸'):
+            bz = bz + u'出口口岸：%s；' % in_xls_data.get(u'出口口岸')
+        if in_xls_data.get(u'目的地'):
+            bz = bz + u'目的地：%s；' % in_xls_data.get(u'目的地')
+        BZ.text = bz
+        HJJE.text = JSHJ.text = str(amount)
+
+def dzmixi(in_xls_data,COMMON_FPKJ_XMXXS):
+    # 明细计算内容,
+    out_amount = float(in_xls_data.get(u'成交金额'))  # 成交外币
+    currency = in_xls_data.get(u'币种')
+    mouth = in_xls_data.get(u'出口日期')
+    rate = exchange_rate(currency,mouth) or 0
+    if not rate:
+        logger.exception (u'找不到%s所在的月份所对应%s汇率' % (mouth,currency))
+    amount = float(in_xls_data.get(u'成交金额')) * float(rate)  # 成交人民币
+    COMMON_FPKJ_XMXX = etree.SubElement(COMMON_FPKJ_XMXXS, 'COMMON_FPKJ_XMXX')
+    FPHXZ = etree.SubElement(COMMON_FPKJ_XMXX, 'FPHXZ') #发票行性质，0正常行，1折扣行，2被折扣行
+    FPHXZ.text = u'0'
+    XMMC = etree.SubElement(COMMON_FPKJ_XMXX, 'XMMC') #商品名称
+    XMMC.text = in_xls_data.get(u'商品名称')
+    GGXH = etree.SubElement(COMMON_FPKJ_XMXX, 'GGXH') # 规格型号
+    GGXH.text = in_xls_data.get(u'规格型号') or ''
+    DW = etree.SubElement(COMMON_FPKJ_XMXX, 'DW') #计量单位
+    DW.text = in_xls_data.get(u'计量单位')
+    SPBM = etree.SubElement(COMMON_FPKJ_XMXX, 'SPBM') #税收编码
+    ZXBM = etree.SubElement(COMMON_FPKJ_XMXX, 'ZXBM') #企业编码
+    ZXBM.text = u''
+    YHZCBS = etree.SubElement(COMMON_FPKJ_XMXX, 'YHZCBS')# 优惠政策标识：0不使用，1使用
+    YHZCBS.text = u'1'
+    LSLBS = etree.SubElement(COMMON_FPKJ_XMXX, 'LSLBS')#零标识，0出口退税，1免税
+    LSLBS.text = u'1'
+    ZZSTSGL = etree.SubElement(COMMON_FPKJ_XMXX, 'ZZSTSGL')# 优惠政策说明？？
+    ZZSTSGL.text = u''
+    XMSL = etree.SubElement(COMMON_FPKJ_XMXX, 'XMSL')# 数量
+    XMSL.text = str(in_xls_data.get(u'数量'))
+    XMDJ = etree.SubElement(COMMON_FPKJ_XMXX, 'XMDJ') # 单价
+    XMDJ.text = str(round(amount / float(in_xls_data.get(u'数量')),6))
+    XMJE = etree.SubElement(COMMON_FPKJ_XMXX, 'XMJE') # 金额
+    XMJE.text = str(round(amount,2))
+    SE = etree.SubElement(COMMON_FPKJ_XMXX, 'SE') # 税额
+    SE.text = u'0.00'
+    SL = etree.SubElement(COMMON_FPKJ_XMXX, 'SL') # 税率
+    SL.text = u'0'
+    KCE = etree.SubElement(COMMON_FPKJ_XMXX, 'KCE') #扣除额
+    KCE.text = u'0'
+
+    goods_code = base_date(in_xls_data.get(u'商品代码'), 1)
+    if goods_code:
+        SPBM.text = str(goods_code)
+    else:
+        logger.exception (u'找不到海关商品编码%s所对应商品税收编码' % in_xls_data.get(u'商品代码'))
+    return (out_amount,amount)
 
 if __name__ == "__main__":
     conf = Config()
     logger = conf.getLog()
-    outformxls()
+    print u"普通发票请选1，电子发票请选2"
+    select = raw_input(u'selct:')
+    if select == '1' or select == '2':
+        outformxls(select)
+    else:
+        print u'请重新运行并正确选择'
+    print u'完成'
     time.sleep(10)
