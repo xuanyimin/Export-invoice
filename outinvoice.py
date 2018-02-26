@@ -121,27 +121,44 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
     Qyspbm.text = u''
     Jldw = etree.SubElement(Sph, 'Jldw')  # 计量单位
     Jldw.text = in_xls_data.get(u'计量单位')
-    bz = u'出口业务；出口销售总额:%s；'%out_amount
+    bz = u'出口业务；出口总额:%s；'%out_amount
     if in_xls_data.get(u'币种'):
-        bz = bz + u'币种：%s；' % in_xls_data.get(u'币种').split(' ')[1]
+        bz = bz + u'币种:%s,' % in_xls_data.get(u'币种').split(' ')[1]
     if in_xls_data.get(u'成交方式'):
-        bz = bz + u'成交方式：%s；' % in_xls_data.get(u'成交方式')
-    if in_xls_data.get(u'保费金额')> 0:
-        bz = bz + u'保费：%s；' % in_xls_data.get(u'保费金额')
+        bz = bz + u'成交方式:%s,' % in_xls_data.get(u'成交方式')
+    if in_xls_data.get(u'保费金额') > 0:
+        bz = bz + u'保费:%s,' % in_xls_data.get(u'保费金额')
     if in_xls_data.get(u'运费金额') > 0:
-        bz = bz + u'运费：%s；' % in_xls_data.get(u'运费金额')
+        bz = bz + u'运费:%s,' % in_xls_data.get(u'运费金额')
     if in_xls_data.get(u'进出口合同号'):
-        bz = bz + u'进出口合同号：%s；' % in_xls_data.get(u'进出口合同号')
+        bz = bz + u'合同号:%s,' % in_xls_data.get(u'进出口合同号')
+    if in_xls_data.get(u'出口日期'):
+        if len(bytes(bz.encode('GBK'))) + 11.0 > 130.0:
+            pass
+        else:
+            mouth = in_xls_data.get(u'出口日期')
+            currency = in_xls_data.get(u'币种')
+            bz = bz + u'汇率:%s,' % exchange_rate(currency, mouth)
     if in_xls_data.get(u'加工贸易手册号'):
-        bz = bz + u'加工贸易手册号：%s；' % in_xls_data.get(u'加工贸易手册号')
-    #if in_xls_data.get(u'运输工具'):
-        #bz = bz + u'运输工具：%s；' % in_xls_data.get(u'运输工具')
+        if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'加工贸易手册号').encode('GBK'))) + 8 > 130:
+            pass
+        else:
+            bz = bz + u'手册号:%s,' % in_xls_data.get(u'加工贸易手册号')
     if in_xls_data.get(u'装船口岸'):
-        bz = bz + u'装船口岸：%s；' % in_xls_data.get(u'装船口岸')
+        if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'装船口岸').encode('GBK'))) + 10 > 130:
+            pass
+        else:
+            bz = bz + u'装船口岸:%s,' % in_xls_data.get(u'装船口岸')
     if in_xls_data.get(u'出口口岸'):
-        bz = bz + u'出口口岸：%s；' % in_xls_data.get(u'出口口岸')
+        if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'出口口岸').encode('GBK'))) + 10 > 130:
+            pass
+        else:
+            bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'出口口岸')
     if in_xls_data.get(u'目的地'):
-        bz = bz + u'目的地：%s；' % in_xls_data.get(u'目的地')
+        if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'目的地').encode('GBK'))) + 10 > 130:
+            pass
+        else:
+            bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'目的地')
     Bz.text = bz
 
 def base_date(data,number):
@@ -201,14 +218,12 @@ def outformxls(select):
         tree.write('out%s.xml'%time.strftime('%Y%m%d',time.localtime(time.time())), pretty_print=True, xml_declaration=True, encoding='GBK')
     else :
         business = etree.Element("business",  comment=u"发票开具", id="FPKJ")
-        REQUEST_COMMON_FPKJ = etree.SubElement(business, 'REQUEST_COMMON_FPKJ')
-        REQUEST_COMMON_FPKJ.set("class", "REQUEST_COMMON_FPKJ")
-        to_dzxml(list, REQUEST_COMMON_FPKJ)
+        to_dzxml(list, business)
         tree = etree.ElementTree(business)
         tree.write('out%s.xml' % time.strftime('%Y%m%d', time.localtime(time.time())), pretty_print=True,
                    xml_declaration=True, encoding='GBK')
 
-def to_dzxml(list,REQUEST_COMMON_FPKJ):
+def to_dzxml(list,business):
     line = len(list)
     invoices =[]
     i = 0
@@ -224,6 +239,8 @@ def to_dzxml(list,REQUEST_COMMON_FPKJ):
             i += 1
             invoices.append(invoice)
             # 发票头
+            REQUEST_COMMON_FPKJ = etree.SubElement(business, 'REQUEST_COMMON_FPKJ')
+            REQUEST_COMMON_FPKJ.set("class", "REQUEST_COMMON_FPKJ")
             COMMON_FPKJ_FPT = etree.SubElement(REQUEST_COMMON_FPKJ, 'COMMON_FPKJ_FPT')
             COMMON_FPKJ_FPT.set("class", "COMMON_FPKJ_FPT")
             FPQQLSH = etree.SubElement(COMMON_FPKJ_FPT, 'FPQQLSH')  # 开票请求流水号
@@ -233,11 +250,11 @@ def to_dzxml(list,REQUEST_COMMON_FPKJ):
             XSF_NSRSBH = etree.SubElement(COMMON_FPKJ_FPT, 'XSF_NSRSBH')#销售方纳税人识别号
             XSF_NSRSBH.text = company_date(u'公司税号：')
             XSF_MC = etree.SubElement(COMMON_FPKJ_FPT, 'XSF_MC')  # 销售方名称
-            XSF_MC.text = company_date(u'公司名称：')
+            XSF_MC.text = u'%s'% company_date(u'公司名称：')
             XSF_DZDH = etree.SubElement(COMMON_FPKJ_FPT, 'XSF_DZDH')#销售方地址、电话
-            XSF_DZDH.text = company_date(u'公司地址、电话：')
+            XSF_DZDH.text = u'%s'% company_date(u'公司地址、电话：')
             XSF_YHZH = etree.SubElement(COMMON_FPKJ_FPT, 'XSF_YHZH')#销售方银行帐号
-            XSF_YHZH.text = company_date(u'开户行及帐号：')
+            XSF_YHZH.text = u'%s'% company_date(u'开户行及帐号：')
             GMF_NSRSBH = etree.SubElement(COMMON_FPKJ_FPT, 'GMF_NSRSBH')  # 购买主纳税人识别号
             GMF_NSRSBH.text = u''
             GMF_MC = etree.SubElement(COMMON_FPKJ_FPT, 'GMF_MC')  # 购方名称
@@ -268,25 +285,45 @@ def to_dzxml(list,REQUEST_COMMON_FPKJ):
             COMMON_FPKJ_XMXXS.set("size", "1")
             # 发票明细行
             (out_amount,amount) = dzmixi(in_xls_data,COMMON_FPKJ_XMXXS)
-        bz = u'出口业务；出口销售总额:%s；' % out_amount
+        bz = u'出口业务;出口总额:%s;' % out_amount
         if in_xls_data.get(u'币种'):
-            bz = bz + u'币种：%s；' % in_xls_data.get(u'币种').split(' ')[1]
+            bz = bz + u'币种:%s,' % in_xls_data.get(u'币种').split(' ')[1]
         if in_xls_data.get(u'成交方式'):
-            bz = bz + u'成交方式：%s；' % in_xls_data.get(u'成交方式')
+            bz = bz + u'成交方式:%s,' % in_xls_data.get(u'成交方式')
         if in_xls_data.get(u'保费金额') > 0:
-            bz = bz + u'保费：%s；' % in_xls_data.get(u'保费金额')
+            bz = bz + u'保费:%s,' % in_xls_data.get(u'保费金额')
         if in_xls_data.get(u'运费金额') > 0:
-            bz = bz + u'运费：%s；' % in_xls_data.get(u'运费金额')
+            bz = bz + u'运费:%s,' % in_xls_data.get(u'运费金额')
         if in_xls_data.get(u'进出口合同号'):
-            bz = bz + u'进出口合同号：%s；' % in_xls_data.get(u'进出口合同号')
+            bz = bz + u'合同号:%s,' % in_xls_data.get(u'进出口合同号')
+        if in_xls_data.get(u'出口日期'):
+            if len(bytes(bz.encode('GBK'))) + 11.0 > 130.0 :
+                pass
+            else:
+                mouth = in_xls_data.get(u'出口日期')
+                currency = in_xls_data.get(u'币种')
+                bz = bz + u'汇率:%s,' % exchange_rate(currency,mouth)
         if in_xls_data.get(u'加工贸易手册号'):
-            bz = bz + u'加工贸易手册号：%s；' % in_xls_data.get(u'加工贸易手册号')
+            if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'加工贸易手册号').encode('GBK'))) + 8 > 130:
+                pass
+            else:
+                bz = bz + u'手册号:%s,' % in_xls_data.get(u'加工贸易手册号')
         if in_xls_data.get(u'装船口岸'):
-            bz = bz + u'装船口岸：%s；' % in_xls_data.get(u'装船口岸')
+            if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'装船口岸').encode('GBK'))) + 10 > 130:
+                pass
+            else:
+                bz = bz + u'装船口岸:%s,' % in_xls_data.get(u'装船口岸')
         if in_xls_data.get(u'出口口岸'):
-            bz = bz + u'出口口岸：%s；' % in_xls_data.get(u'出口口岸')
+            if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'出口口岸').encode('GBK'))) + 10> 130:
+                pass
+            else:
+                bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'出口口岸')
         if in_xls_data.get(u'目的地'):
-            bz = bz + u'目的地：%s；' % in_xls_data.get(u'目的地')
+            if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'目的地').encode('GBK'))) + 10> 130:
+                pass
+            else:
+                bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'目的地')
+        print U'BZ:%s'%len(bytes(bz.encode('GBK')))
         BZ.text = bz
         HJJE.text = JSHJ.text = str(amount)
 
@@ -341,7 +378,7 @@ if __name__ == "__main__":
     conf = Config()
     logger = conf.getLog()
     print u"普通发票请选1，电子发票请选2"
-    select = raw_input(u'selct:')
+    select = raw_input(u'select:')
     if select == '1' or select == '2':
         outformxls(select)
     else:
