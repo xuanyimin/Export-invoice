@@ -296,6 +296,8 @@ def to_dzxml(list,business):
             bz = bz + u'运费:%s,' % in_xls_data.get(u'运费金额')
         if in_xls_data.get(u'进出口合同号'):
             bz = bz + u'合同号:%s,' % in_xls_data.get(u'进出口合同号')
+        else:
+            logger.exception(u'找不到报关单%s所对应进出口合同号' % in_xls_data.get(u'海关报关单号'))
         if in_xls_data.get(u'出口日期'):
             if len(bytes(bz.encode('GBK'))) + 11.0 > 130.0 :
                 pass
@@ -323,7 +325,7 @@ def to_dzxml(list,business):
                 pass
             else:
                 bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'目的地')
-        print U'BZ:%s'%len(bytes(bz.encode('GBK')))
+        print u'备注长度:%s'%len(bytes(bz.encode('GBK')))
         BZ.text = bz
         HJJE.text = JSHJ.text = str(amount)
 
