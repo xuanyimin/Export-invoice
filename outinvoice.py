@@ -51,7 +51,7 @@ def to_xml(list,Kp):
             Skr = etree.SubElement(Fp, 'Skr')#收款人
             Skr.text = u''
             Fhr = etree.SubElement(Fp, 'Fhr')#复核人
-            Fhr.text = u'昊添财务'
+            Fhr.text = u''
             Bz = etree.SubElement(Fp, 'Bz')  # 复核人
             Spxx = etree.SubElement(Fp, 'Spxx')
             # 发票明细行
@@ -268,7 +268,7 @@ def to_dzxml(list,business):
             SKR = etree.SubElement(COMMON_FPKJ_FPT, 'SKR')  # 收款人
             SKR.text = u''
             FHR = etree.SubElement(COMMON_FPKJ_FPT, 'FHR')  # 复核人
-            FHR.text = u'昊添财务'
+            FHR.text = u''
             YFP_DM = etree.SubElement(COMMON_FPKJ_FPT, 'YFP_DM')  # 原发票代码，红字必须
             YFP_DM.text = u''
             YFP_HM = etree.SubElement(COMMON_FPKJ_FPT, 'YFP_HM')  # 原发票号码，红字必须
@@ -298,6 +298,16 @@ def to_dzxml(list,business):
             bz = bz + u'合同号:%s,' % in_xls_data.get(u'进出口合同号')
         else:
             logger.exception(u'找不到报关单%s所对应进出口合同号' % in_xls_data.get(u'海关报关单号'))
+        if in_xls_data.get(u'加工贸易手册号'):
+            if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'加工贸易手册号').encode('GBK'))) + 8 > 130:
+                pass
+            else:
+                bz = bz + u'手册号:%s,' % in_xls_data.get(u'加工贸易手册号')
+        if in_xls_data.get(u'目的地'):
+            if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'目的地').encode('GBK'))) + 10> 130:
+                pass
+            else:
+                bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'目的地')
         if in_xls_data.get(u'出口日期'):
             if len(bytes(bz.encode('GBK'))) + 11.0 > 130.0 :
                 pass
@@ -305,11 +315,6 @@ def to_dzxml(list,business):
                 mouth = in_xls_data.get(u'出口日期')
                 currency = in_xls_data.get(u'币种')
                 bz = bz + u'汇率:%s,' % exchange_rate(currency,mouth)
-        if in_xls_data.get(u'加工贸易手册号'):
-            if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'加工贸易手册号').encode('GBK'))) + 8 > 130:
-                pass
-            else:
-                bz = bz + u'手册号:%s,' % in_xls_data.get(u'加工贸易手册号')
         if in_xls_data.get(u'装船口岸'):
             if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'装船口岸').encode('GBK'))) + 10 > 130:
                 pass
@@ -320,12 +325,8 @@ def to_dzxml(list,business):
                 pass
             else:
                 bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'出口口岸')
-        if in_xls_data.get(u'目的地'):
-            if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'目的地').encode('GBK'))) + 10> 130:
-                pass
-            else:
-                bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'目的地')
-        print u'备注长度:%s'%len(bytes(bz.encode('GBK')))
+        if len(bytes(bz.encode('GBK'))) > 130 :
+            logger.exception(u'报关单%s的备注长度超过130个字节' % in_xls_data.get(u'海关报关单号'))
         BZ.text = bz
         HJJE.text = JSHJ.text = str(amount)
 
