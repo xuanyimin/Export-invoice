@@ -24,6 +24,7 @@ def to_xml(list,Kp):
         invoice = in_xls_data.get(u'海关报关单号')
         date = time.strftime('%Y%m%d%H%M%S',time.localtime(time.time()))
         if invoice in invoices:
+            print out_amount
             mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf)
         else:
             out_amount = bf = yf = zf = 0
@@ -55,7 +56,7 @@ def to_xml(list,Kp):
             Bz = etree.SubElement(Fp, 'Bz')  # 复核人
             Spxx = etree.SubElement(Fp, 'Spxx')
             # 发票明细行
-            mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf)
+            out_amount = mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf)
 
     Zsl.text = str(i)
 
@@ -78,7 +79,11 @@ def exchange_rate(currency,date):
 
 def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
     # 明细计算内容,
-    out_amount += float(in_xls_data.get(u'成交金额'))  # 成交外币
+    out_amount2 = float(in_xls_data.get(u'成交金额'))  # 成交外币
+    if out_amount:
+        out_amount += out_amount2
+    else:
+        out_amount = out_amount2
     currency = in_xls_data.get(u'币种')
     mouth = in_xls_data.get(u'出口日期')
     rate = exchange_rate(currency,mouth) or 0
@@ -132,6 +137,18 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
         bz = bz + u'运费:%s,' % in_xls_data.get(u'运费金额')
     if in_xls_data.get(u'进出口合同号'):
         bz = bz + u'合同号:%s,' % in_xls_data.get(u'进出口合同号')
+    else:
+        logger.exception(u'找不到报关单%s所对应进出口合同号' % in_xls_data.get(u'海关报关单号'))
+    if in_xls_data.get(u'加工贸易手册号'):
+        if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'加工贸易手册号').encode('GBK'))) + 8 > 130:
+            pass
+        else:
+            bz = bz + u'手册号:%s,' % in_xls_data.get(u'加工贸易手册号')
+    if in_xls_data.get(u'目的地'):
+        if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'目的地').encode('GBK'))) + 10 > 130:
+            pass
+        else:
+            bz = bz + u'目的地:%s,' % in_xls_data.get(u'目的地')
     if in_xls_data.get(u'出口日期'):
         if len(bytes(bz.encode('GBK'))) + 11.0 > 130.0:
             pass
@@ -139,11 +156,6 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
             mouth = in_xls_data.get(u'出口日期')
             currency = in_xls_data.get(u'币种')
             bz = bz + u'汇率:%s,' % exchange_rate(currency, mouth)
-    if in_xls_data.get(u'加工贸易手册号'):
-        if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'加工贸易手册号').encode('GBK'))) + 8 > 130:
-            pass
-        else:
-            bz = bz + u'手册号:%s,' % in_xls_data.get(u'加工贸易手册号')
     if in_xls_data.get(u'装船口岸'):
         if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'装船口岸').encode('GBK'))) + 10 > 130:
             pass
@@ -154,12 +166,10 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
             pass
         else:
             bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'出口口岸')
-    if in_xls_data.get(u'目的地'):
-        if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'目的地').encode('GBK'))) + 10 > 130:
-            pass
-        else:
-            bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'目的地')
-    Bz.text = bz
+    if len(bytes(bz.encode('GBK'))) > 130:
+        logger.exception(u'报关单%s的备注长度超过130个字节' % in_xls_data.get(u'海关报关单号'))
+    Bz.text = bz.replace(' ','')
+    return out_amount
 
 def base_date(data,number):
     # 从薄名中取出基础数据
@@ -298,16 +308,16 @@ def to_dzxml(list,business):
             bz = bz + u'合同号:%s,' % in_xls_data.get(u'进出口合同号')
         else:
             logger.exception(u'找不到报关单%s所对应进出口合同号' % in_xls_data.get(u'海关报关单号'))
-        if in_xls_data.get(u'加工贸易手册号'):
-            if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'加工贸易手册号').encode('GBK'))) + 8 > 130:
-                pass
-            else:
-                bz = bz + u'手册号:%s,' % in_xls_data.get(u'加工贸易手册号')
         if in_xls_data.get(u'目的地'):
             if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'目的地').encode('GBK'))) + 10> 130:
                 pass
             else:
-                bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'目的地')
+                bz = bz + u'目的地:%s,' % in_xls_data.get(u'目的地')
+        if in_xls_data.get(u'出口口岸'):
+            if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'出口口岸').encode('GBK'))) + 10> 130:
+                pass
+            else:
+                bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'出口口岸')
         if in_xls_data.get(u'出口日期'):
             if len(bytes(bz.encode('GBK'))) + 11.0 > 130.0 :
                 pass
@@ -315,19 +325,19 @@ def to_dzxml(list,business):
                 mouth = in_xls_data.get(u'出口日期')
                 currency = in_xls_data.get(u'币种')
                 bz = bz + u'汇率:%s,' % exchange_rate(currency,mouth)
+        if in_xls_data.get(u'加工贸易手册号'):
+            if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'加工贸易手册号').encode('GBK'))) + 8 > 130:
+                pass
+            else:
+                bz = bz + u'手册号:%s,' % in_xls_data.get(u'加工贸易手册号')
         if in_xls_data.get(u'装船口岸'):
             if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'装船口岸').encode('GBK'))) + 10 > 130:
                 pass
             else:
                 bz = bz + u'装船口岸:%s,' % in_xls_data.get(u'装船口岸')
-        if in_xls_data.get(u'出口口岸'):
-            if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'出口口岸').encode('GBK'))) + 10> 130:
-                pass
-            else:
-                bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'出口口岸')
         if len(bytes(bz.encode('GBK'))) > 130 :
             logger.exception(u'报关单%s的备注长度超过130个字节' % in_xls_data.get(u'海关报关单号'))
-        BZ.text = bz
+        BZ.text = bz.replace(' ','')
         HJJE.text = JSHJ.text = str(amount)
 
 def dzmixi(in_xls_data,COMMON_FPKJ_XMXXS):
