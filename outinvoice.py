@@ -4,11 +4,10 @@ import xlrd
 import time
 from lxml import etree
 from config import Config
-import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
+from tkinter import *
+from tkinter.filedialog import askopenfilename
 
-def to_xml(list,Kp):
+def to_xml(list,Kp,zj_file):
     #处理XML头
     Version = etree.SubElement(Kp, 'Version')
     Version.text = '3.0'
@@ -24,8 +23,7 @@ def to_xml(list,Kp):
         invoice = in_xls_data.get(u'海关报关单号')
         date = time.strftime('%Y%m%d%H%M%S',time.localtime(time.time()))
         if invoice in invoices:
-            print out_amount
-            mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf)
+            mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf,zj_file)
         else:
             out_amount = bf = yf = zf = 0
             i += 1
@@ -56,28 +54,33 @@ def to_xml(list,Kp):
             Bz = etree.SubElement(Fp, 'Bz')  # 复核人
             Spxx = etree.SubElement(Fp, 'Spxx')
             # 发票明细行
-            out_amount = mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf)
+            out_amount = mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf,zj_file)
 
     Zsl.text = str(i)
 
-def exchange_rate(currency,date):
+def exchange_rate(currency,date,open_file):
     currency = currency.split(' ')[1]
     month = date.replace('-','')[:6]
-    base_data = xlrd.open_workbook('base.xls')
-    table3 = base_data.sheet_by_name(u'汇率')
-    # 取得行数
-    ncows3 = table3.nrows
-    colnames3 = table3.row_values(0)
-    for rownum in range(1, ncows3):
-        row = table3.row_values(rownum)
-        if row:
-            app = {}
-            for i in range(len(colnames3)):
-                app[colnames3[i]] = row[i]
-            if str(int(app.get(u'月份'))) == month:
-                return app.get(currency)
+    base_data = xlrd.open_workbook(open_file)
+    try:
+        table3 = base_data.sheet_by_name(u'汇率')
+        # 取得行数
+        ncows3 = table3.nrows
+        colnames3 = table3.row_values(0)
+        for rownum in range(1, ncows3):
+            row = table3.row_values(rownum)
+            if row:
+                app = {}
+                for i in range(len(colnames3)):
+                    app[colnames3[i]] = row[i]
+                if str(int(app.get(u'月份'))) == month:
+                    return app.get(currency)
+    except:
+        logger.exception(u'%s找不到页：汇率' % open_file)
+        quote = u'昊添财务发现 - ERROR - %s找不到页：汇率\n' % open_file
+        T.insert(END, quote)
 
-def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
+def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf,zj_file):
     # 明细计算内容,
     out_amount2 = float(in_xls_data.get(u'成交金额'))  # 成交外币
     if out_amount:
@@ -86,9 +89,11 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
         out_amount = out_amount2
     currency = in_xls_data.get(u'币种')
     mouth = in_xls_data.get(u'出口日期')
-    rate = exchange_rate(currency,mouth) or 0
+    rate = exchange_rate(currency,mouth,zj_file) or 0
     if not rate:
         logger.exception (u'找不到%s所在的月份所对应%s汇率' % (mouth,currency))
+        quote = '昊添财务发现 - ERROR - 找不到%s所在的月份所对应%s汇率\n' % (mouth,currency)
+        T.insert(END, quote)
     amount = float(in_xls_data.get(u'成交金额')) * float(rate)  # 成交人民币
     bf += float(in_xls_data.get(u'保费金额'))  # 保费
     yf += float(in_xls_data.get(u'运费金额'))  # 运费
@@ -97,11 +102,13 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
     Kce = etree.SubElement(Sph, 'Kce')  # 扣除额
     Kce.text = u''
     Spbm = etree.SubElement(Sph, 'Spbm')  # 商品编码
-    goods_code = base_date(in_xls_data.get(u'商品代码'), 1)
+    goods_code = base_date(in_xls_data.get(u'商品代码'), 1,zj_file)
     if goods_code:
         Spbm.text = str(goods_code)
     else:
         logger.exception (u'找不到海关商品编码%s所对应商品税收编码' % in_xls_data.get(u'商品代码'))
+        quote = u'昊添财务发现 - ERROR - 找不到海关商品编码%s所对应商品税收编码\n' % in_xls_data.get(u'商品代码')
+        T.insert(END, quote)
     Dj = etree.SubElement(Sph, 'Dj')  # 单价
     Dj.text = str(amount / float(in_xls_data.get(u'数量')))
     Spmc = etree.SubElement(Sph, 'Spmc')  # 商品名称
@@ -139,6 +146,8 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
         bz = bz + u'合同号:%s,' % in_xls_data.get(u'进出口合同号')
     else:
         logger.exception(u'找不到报关单%s所对应进出口合同号' % in_xls_data.get(u'海关报关单号'))
+        quote = u'昊添财务发现 - ERROR - 找不到报关单%s所对应进出口合同号\n' % in_xls_data.get(u'海关报关单号')
+        T.insert(END, quote)
     if in_xls_data.get(u'加工贸易手册号'):
         if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'加工贸易手册号').encode('GBK'))) + 8 > 130:
             pass
@@ -155,7 +164,7 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
         else:
             mouth = in_xls_data.get(u'出口日期')
             currency = in_xls_data.get(u'币种')
-            bz = bz + u'汇率:%s,' % exchange_rate(currency, mouth)
+            bz = bz + u'汇率:%s,' % exchange_rate(currency, mouth,zj_file)
     if in_xls_data.get(u'装船口岸'):
         if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'装船口岸').encode('GBK'))) + 10 > 130:
             pass
@@ -168,47 +177,62 @@ def mixi(in_xls_data,Spxx,Bz,out_amount,bf,yf,zf):
             bz = bz + u'出口口岸:%s,' % in_xls_data.get(u'出口口岸')
     if len(bytes(bz.encode('GBK'))) > 130:
         logger.exception(u'报关单%s的备注长度超过130个字节' % in_xls_data.get(u'海关报关单号'))
+        quote = u'昊添财务发现 - ERROR - 报关单%s的备注长度超过130个字节\n' % in_xls_data.get(u'海关报关单号')
+        T.insert(END, quote)
+
     Bz.text = bz.replace(' ','')
     return out_amount
-
-def base_date(data,number):
+def base_date(data,number,open_file):
     # 从薄名中取出基础数据
-    base_data = xlrd.open_workbook('base.xls')
-    table2 = base_data.sheet_by_name(u'编码')
-    # 取得行数
-    ncows2 = table2.nrows
-    colnames2 = table2.row_values(0)
-    for rownum in range(1, ncows2):
-        row = table2.row_values(rownum)
-        if row:
-            app = []
-            for i in range(len(colnames2)):
-                app.append(str(row[i]))
-            if app[0] == str(int(data)):
-                return app[number]
+    base_data = xlrd.open_workbook(open_file)
+    try:
+        table2 = base_data.sheet_by_name(u'编码')
+        # 取得行数
+        ncows2 = table2.nrows
+        colnames2 = table2.row_values(0)
+        for rownum in range(1, ncows2):
+            row = table2.row_values(rownum)
+            if row:
+                app = []
+                for i in range(len(colnames2)):
+                    app.append(str(row[i]))
+                if app[0] == str(int(data)):
+                    return app[number]
+    except:
+        logger.exception(u'%s找不到页：编码' % open_file)
+        quote = u'昊添财务发现 - ERROR - %s找不到页：编码\n' % open_file
+        T.insert(END, quote)
 
-def company_date(data):
+def company_date(data,open_file):
     # 从薄名中取出基础数据
-    base_data = xlrd.open_workbook('base.xls')
-    table = base_data.sheet_by_name(u'公司信息')
-    nrows = table.nrows
-    colnames = table.row_values(0)
-    for rownum in range(0, nrows):
-        row = table.row_values(rownum)
-        if row:
-            app = []
-            for i in range(len(colnames)):
-                app.append(str(row[i]))
-            if app[0] == data:
-                return app[1]
+    base_data = xlrd.open_workbook(open_file)
+    try:
+        table = base_data.sheet_by_name(u'公司信息')
+        nrows = table.nrows
+        colnames = table.row_values(0)
+        for rownum in range(0, nrows):
+            row = table.row_values(rownum)
+            if row:
+                app = []
+                for i in range(len(colnames)):
+                    app.append(str(row[i]))
+                if app[0] == data:
+                    return app[1]
+    except:
+        logger.exception(u'%s找不到页：公司信息' % open_file)
+        quote = u'昊添财务发现 - ERROR - %s找不到页：公司信息\n' % open_file
+        T.insert(END, quote)
 
-def outformxls(select):
+def outformxls(db_file,zj_file,xz):
     #处理EXCEL
-    xls_data = xlrd.open_workbook('10137.xls')
+    xls_data = xlrd.open_workbook(db_file)
     table = xls_data.sheets()[0]
     # 取得行数
     ncows = table.nrows
     colnames = table.row_values(0)
+    if u'海关报关单号' not in colnames:
+        quote = u'昊添财务发现 - ERROR - %s文件存在问题,不是我们所需要的XLS文件。\n' % db_file
+        T.insert(END, quote)
     list = []
     newcows = 0
     for rownum in range(1, ncows):
@@ -221,19 +245,19 @@ def outformxls(select):
             newcows += 1
 
     # 写XML
-    if select == '1':
+    select = xz
+    if select == 1:
         Kp = etree.Element('Kp')
-        to_xml(list,Kp)
+        to_xml(list,Kp,zj_file)
         tree = etree.ElementTree(Kp)
-        tree.write('out%s.xml'%time.strftime('%Y%m%d',time.localtime(time.time())), pretty_print=True, xml_declaration=True, encoding='GBK')
     else :
         business = etree.Element("business",  comment=u"发票开具", id="FPKJ")
-        to_dzxml(list, business)
+        to_dzxml(list, business,zj_file)
         tree = etree.ElementTree(business)
-        tree.write('out%s.xml' % time.strftime('%Y%m%d', time.localtime(time.time())), pretty_print=True,
+    tree.write('out%s.xml' % time.strftime('%Y%m%d', time.localtime(time.time())), pretty_print=True,
                    xml_declaration=True, encoding='GBK')
 
-def to_dzxml(list,business):
+def to_dzxml(list,business,zj_file):
     line = len(list)
     invoices =[]
     i = 0
@@ -242,7 +266,7 @@ def to_dzxml(list,business):
         in_xls_data = list[data]
         invoice = in_xls_data.get(u'海关报关单号')
         if invoice in invoices:
-            (out_amount2, amount2) = dzmixi(in_xls_data, COMMON_FPKJ_XMXXS)
+            (out_amount2, amount2) = dzmixi(in_xls_data, COMMON_FPKJ_XMXXS,zj_file)
             out_amount += out_amount2
             amount += amount2
         else:
@@ -258,13 +282,13 @@ def to_dzxml(list,business):
             KPLX = etree.SubElement(COMMON_FPKJ_FPT, 'KPLX')#开票类型 0为蓝字，1为红字
             KPLX.text = u'0'
             XSF_NSRSBH = etree.SubElement(COMMON_FPKJ_FPT, 'XSF_NSRSBH')#销售方纳税人识别号
-            XSF_NSRSBH.text = company_date(u'公司税号：')
+            XSF_NSRSBH.text = company_date(u'公司税号：',zj_file)
             XSF_MC = etree.SubElement(COMMON_FPKJ_FPT, 'XSF_MC')  # 销售方名称
-            XSF_MC.text = u'%s'% company_date(u'公司名称：')
+            XSF_MC.text = u'%s'% company_date(u'公司名称：',zj_file)
             XSF_DZDH = etree.SubElement(COMMON_FPKJ_FPT, 'XSF_DZDH')#销售方地址、电话
-            XSF_DZDH.text = u'%s'% company_date(u'公司地址、电话：')
+            XSF_DZDH.text = u'%s'% company_date(u'公司地址、电话：',zj_file)
             XSF_YHZH = etree.SubElement(COMMON_FPKJ_FPT, 'XSF_YHZH')#销售方银行帐号
-            XSF_YHZH.text = u'%s'% company_date(u'开户行及帐号：')
+            XSF_YHZH.text = u'%s'% company_date(u'开户行及帐号：',zj_file)
             GMF_NSRSBH = etree.SubElement(COMMON_FPKJ_FPT, 'GMF_NSRSBH')  # 购买主纳税人识别号
             GMF_NSRSBH.text = u''
             GMF_MC = etree.SubElement(COMMON_FPKJ_FPT, 'GMF_MC')  # 购方名称
@@ -294,7 +318,7 @@ def to_dzxml(list,business):
             COMMON_FPKJ_XMXXS.set("class", "COMMON_FPKJ_XMXX")
             COMMON_FPKJ_XMXXS.set("size", "1")
             # 发票明细行
-            (out_amount,amount) = dzmixi(in_xls_data,COMMON_FPKJ_XMXXS)
+            (out_amount,amount) = dzmixi(in_xls_data,COMMON_FPKJ_XMXXS,zj_file)
         bz = u'出口业务;出口总额:%s;' % out_amount
         if in_xls_data.get(u'币种'):
             bz = bz + u'币种:%s,' % in_xls_data.get(u'币种').split(' ')[1]
@@ -308,6 +332,8 @@ def to_dzxml(list,business):
             bz = bz + u'合同号:%s,' % in_xls_data.get(u'进出口合同号')
         else:
             logger.exception(u'找不到报关单%s所对应进出口合同号' % in_xls_data.get(u'海关报关单号'))
+            quote = u'昊添财务发现 - ERROR - 找不到报关单%s所对应进出口合同号\n' % in_xls_data.get(u'海关报关单号')
+            T.insert(END, quote)
         if in_xls_data.get(u'目的地'):
             if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'目的地').encode('GBK'))) + 10> 130:
                 pass
@@ -324,7 +350,7 @@ def to_dzxml(list,business):
             else:
                 mouth = in_xls_data.get(u'出口日期')
                 currency = in_xls_data.get(u'币种')
-                bz = bz + u'汇率:%s,' % exchange_rate(currency,mouth)
+                bz = bz + u'汇率:%s,' % exchange_rate(currency,mouth,zj_file)
         if in_xls_data.get(u'加工贸易手册号'):
             if len(bytes(bz.encode('GBK'))) + len(bytes(in_xls_data.get(u'加工贸易手册号').encode('GBK'))) + 8 > 130:
                 pass
@@ -337,17 +363,21 @@ def to_dzxml(list,business):
                 bz = bz + u'装船口岸:%s,' % in_xls_data.get(u'装船口岸')
         if len(bytes(bz.encode('GBK'))) > 130 :
             logger.exception(u'报关单%s的备注长度超过130个字节' % in_xls_data.get(u'海关报关单号'))
+            quote = u'昊添财务发现 - ERROR - 报关单%s的备注长度超过130个字节\n' % in_xls_data.get(u'海关报关单号')
+            T.insert(END, quote)
         BZ.text = bz.replace(' ','')
         HJJE.text = JSHJ.text = str(amount)
 
-def dzmixi(in_xls_data,COMMON_FPKJ_XMXXS):
+def dzmixi(in_xls_data,COMMON_FPKJ_XMXXS,zj_file):
     # 明细计算内容,
     out_amount = float(in_xls_data.get(u'成交金额'))  # 成交外币
     currency = in_xls_data.get(u'币种')
     mouth = in_xls_data.get(u'出口日期')
-    rate = exchange_rate(currency,mouth) or 0
+    rate = exchange_rate(currency,mouth,zj_file) or 0
     if not rate:
         logger.exception (u'找不到%s所在的月份所对应%s汇率' % (mouth,currency))
+        quote = u'昊添财务发现 - ERROR - 找不到%s所在的月份所对应%s汇率\n' % (mouth,currency)
+        T.insert(END, quote)
     amount = float(in_xls_data.get(u'成交金额')) * float(rate)  # 成交人民币
     COMMON_FPKJ_XMXX = etree.SubElement(COMMON_FPKJ_XMXXS, 'COMMON_FPKJ_XMXX')
     FPHXZ = etree.SubElement(COMMON_FPKJ_XMXX, 'FPHXZ') #发票行性质，0正常行，1折扣行，2被折扣行
@@ -380,21 +410,77 @@ def dzmixi(in_xls_data,COMMON_FPKJ_XMXXS):
     KCE = etree.SubElement(COMMON_FPKJ_XMXX, 'KCE') #扣除额
     KCE.text = u'0'
 
-    goods_code = base_date(in_xls_data.get(u'商品代码'), 1)
+    goods_code = base_date(in_xls_data.get(u'商品代码'), 1,zj_file)
     if goods_code:
         SPBM.text = str(goods_code)
     else:
         logger.exception (u'找不到海关商品编码%s所对应商品税收编码' % in_xls_data.get(u'商品代码'))
+        quote = u'昊添财务发现 - ERROR - 找不到海关商品编码%s所对应商品税收编码\n' % in_xls_data.get(u'商品代码')
+        T.insert(END, quote)
     return (out_amount,amount)
+
+def excel2xml(e1,e2,select):
+    T.delete(1.0, END)
+    print (e1.get(),e2.get(),select)
+    outformxls(e1.get(), e2.get(), select)
 
 if __name__ == "__main__":
     conf = Config()
     logger = conf.getLog()
-    print u"普通发票请选1，电子发票请选2"
-    select = raw_input(u'select:')
-    if select == '1' or select == '2':
-        outformxls(select)
-    else:
-        print u'请重新运行并正确选择'
-    print u'完成'
-    time.sleep(10)
+    root = Tk()
+    v = IntVar()
+    db = StringVar()
+    jc = StringVar()
+
+    root.title("出口退税开票辅助系统")
+    root.geometry("600x550+30+30")
+    frmin = Frame(width=400, height=330)
+    frmin.grid(row=0, column=0)
+    def callback():
+        name = askopenfilename()
+        db.set(name)
+
+    def callback2():
+        name = askopenfilename()
+        jc.set(name)
+
+    Label(frmin, text="打开数据文件:").grid(sticky=E)
+    Label(frmin, text="打开基础文件:").grid(sticky=E)
+
+    e1 = Entry(frmin,textvariable=db)
+    e2 = Entry(frmin,textvariable=jc)
+
+    e1.grid(row=0, column=1)
+    e2.grid(row=1, column=1)
+
+    dz = Radiobutton(frmin,
+                text="电子发票",
+                padx=20,
+                variable=v,
+                value='2')
+    pt = Radiobutton(frmin,
+                text="普通发票",
+                padx=20,
+                variable=v,
+                value='1')
+    dz.grid(row=2, column=0)
+    pt.grid(row=2, column=1)
+
+    db_file = Button(frmin, text='打开数据文件',command=callback)
+    db_file.grid(row=0, column=2)
+    base_file = Button(frmin, text='打开基础文件', command=callback2)
+    base_file.grid(row=1, column=2)
+    button2 = Button(frmin, text='生成导入用XML', command =lambda :excel2xml(e1,e2,v.get()))
+    button2.grid(row=3, column=2)
+    frmzj = Frame(width=300, height=20)
+    Label(frmzj, text="报错信息").grid(sticky=E)
+    frmzj.grid(row=1, column=0)
+    frmLT = Frame(bg='white')
+    frmLT.grid(row=2, column=0)
+    S = Scrollbar(frmLT)
+    T = Text(frmLT,)
+    S.pack(side=RIGHT, fill=Y)
+    T.pack(side=LEFT, fill=Y)
+    S.config(command=T.yview)
+    T.config(yscrollcommand=S.set)
+    mainloop()
